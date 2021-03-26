@@ -115,5 +115,69 @@ def capture_test(media):
 
 if __name__ == "__main__":
 
+
+
+
+    media = "images/pets.jpg"
+    cap = cv2.VideoCapture(media)
+    ok, image = cap.read()
+    if not ok:
+        print("error")
+        exit(1)
+
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print(f"h {h}, w {w}")
+    # im = Image.open(media)
+    # im = im.convert("RGBA")
+    # print(f"format: {im.format}, size: {im.size}, mode: {im.mode}")
+    dims = (w, h)
+    # c1 = ImageColor.getrgb("black")
+    # c2 = ImageColor.getrgb("red")
+    # # make a blank image for the text, initialized to transparent text color
+    # buffer = Image.new("RGBA", dims, (255, 255, 255, 0))
+    # fnt = ImageFont.truetype(FONT, 40)
+    # # get a drawing context
+    # d = ImageDraw.Draw(buffer)
+    # # draw text, half opacity
+    # d.text((10, 10), "Hello", font=fnt, fill=c1)
+    # # draw text, full opacity
+    # d.text((10, 60), "World", font=fnt, fill=c2)
+    # overlay = np.array(buffer, dtype=np.uint8)
+    # overlay = cv2.cvtColor(overlay, cv2.COLOR_RGBA2BGRA)
+    # im = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+    # # image = cv2.addWeighted(im, 0.5, overlay, 0.5, 0)
+    # image = cv2.addWeighted(im, 0.9, overlay, 0.1, 0)
+    # out = Image.alpha_composite(im, txt)
+    # out.show()
+    text = "Hello World"
+    color = (0, 0, 0)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_color = color
+    line_type = 2
+    box = (10, 10, 640, 480)
+    x, y = box[0], box[1]
+    x1 = x + 10 if x < 10 else x - 10
+    y1 = y + 20 if y < 20 else y - 20
+    cv2.rectangle(image, (x, y), (box[2], box[3]), color, line_type)
+    cv2.putText(image, text, (x1, y1), font, font_scale, font_color, line_type)
+
+    cv2.imshow("Frame", image)
+    cv2.waitKey(10000)
+    cv2.destroyAllWindows()
+
+    '''
+    dims = (frame.shape[0], frame.shape[1])
+    buffer = Image.new('RGBA', dims)
+    '''
+
+    # print("camera self test")
+    # cam = CvCamera(media, threshold=0.25, fontsize=10)
+    # cam.start()
+    # cam.draw_time(1000)
+    # cam.update()
+    # cam.stop()
+
 """
 pass
