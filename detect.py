@@ -101,7 +101,7 @@ class Detector(object):
         except KeyboardInterrupt:
             pass
         finally:
-            self.camera.wait(10000)
+            self.camera.wait(60000)
             self.camera.stop()
         return
 
@@ -116,7 +116,7 @@ class Detector(object):
 @click.option('--quant', type=str, default='fp32')
 @click.option('--target', type=str, default='all')
 @click.option('--threshold', type=float, default=0.5)
-@click.option('--fontsize', type=int, default=20)
+@click.option('--fontsize', type=int, default=12)
 @click.option('--fastforward', type=int, default=1)
 def main(
         media: Optional[str],

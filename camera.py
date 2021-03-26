@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Dict, Tuple, Generator, Optional
-
+import matplotlib.cm as cm
 import cv2
+import numpy as np
 from PIL import Image
 
 FRAME_PER_SECOND = 30
@@ -21,7 +22,7 @@ class Camera(object):
             fastforward: int = 1
     ) -> None:
         self._dims = (width, height)
-        self._default_color = (0xff, 0xff, 0xff, 0xff)
+        self._default_color = (0xff, 0xff, 0xff)
         self._threshold = threshold
         self._fontsize = fontsize
         self._fastforward = fastforward
@@ -58,25 +59,24 @@ class Camera(object):
 
     def draw_object(self: Camera, object: Dict) -> None:
         prob = object['prob']
-        # color = tuple(np.array(np.array(cm.jet((prob - self._threshold) / (1.0 - self._threshold))) * 255,
-        #                        dtype=np.uint8).tolist())
-        color = (0, 0, 0)
-        print(f"draw prob {prob}, color {color}")
-        print(f"{object}")
+        x = (prob - self._threshold) / (1.0 - self._threshold)
+        # print(f"prob {prob}, x {x}, cm {cm.jet(x)}")
+        color = tuple(np.array(np.array(cm.jet(x)) * 255, dtype=np.uint8).tolist())
+        color = color[:-1]
 
+        # print(f"color {color}")
+        # print(f"{object}")
         self.draw_box(
             rect=object['bbox'], color=color
         )
-
         name = object.get('name')
         xoff = object['bbox'][0] + 5
         yoff = object['bbox'][1] + 5
 
-        if name is not None:
-            print(xoff, yoff, name)
-            self.draw_text(name, location=(xoff, yoff), color=color)
-            yoff += self._fontsize
-        self.draw_text(f"{prob:.3f}", location=(xoff, yoff), color=color)
+        self.draw_text(f"{prob:.2f} {name}", location=(xoff, yoff), color=color)
+        # if name is not None:
+        #     xoff += 40
+        #     self.draw_text(name, location=(xoff, yoff), color=color)
         return
 
     def draw_box(
@@ -85,8 +85,8 @@ class Camera(object):
             color: Optional[Tuple[int, int, int, int]]
     ) -> None:
         outline = color or self._default_color
-        line_type = 2
-        print(f"draw box {rect}")
+        line_type = 3
+        # print(f"draw box {rect}")
         x, y = rect[0], rect[1]
         cv2.rectangle(self.image, (x, y), (rect[2], rect[3]), outline, line_type)
         return
@@ -95,20 +95,17 @@ class Camera(object):
             self: Camera,
             text: str,
             location: Tuple[int, int],
-            color: Optional[Tuple[int, int, int, int]]
+            color: Optional[Tuple[int, int, int]]
     ) -> None:
         if self.image is None:
             return
-        color = color or self._default_color
-        print("draw text", text, "color", color)
+        font_color = color or self._default_color
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
-        font_color = color
+        font_scale = 0.7
         line_type = 2
         x, y = location
         x1 = x + 10 if x < 10 else x - 10
         y1 = y + 20 if y < 20 else y - 20
-
         cv2.putText(self.image, text, (x1, y1), font, font_scale, font_color, line_type)
         return
 
@@ -129,10 +126,10 @@ class CvCamera(Camera):
             hflip: bool = False,
             vflip: bool = False,
             threshold: float = 0.25,
-            fontsize: int = 20,
+            fontsize: int = 10,
             fastforward: int = 0
     ) -> None:
-        print(f"==== CvCamera {media}")
+        print(f"CvCamera {media}")
         self.media = media
         self.window = None
         # self.buffer = None
@@ -175,10 +172,6 @@ class CvCamera(Camera):
         # if self.is_image:
         #     _, self.image = self.cam.read()
         return
-
-    # def get_next(self: CvCamera) -> np.ndarray:
-    # print(f"{self.cam.isOpened()}")
-    # print("reading")
 
     def yield_image(self: CvCamera) -> Generator[Image, None]:
         try:
@@ -240,11 +233,7 @@ if __name__ == "__main__":
     print("camera self test")
     cam = CvCamera(media, threshold=0.25, fontsize=10)
     cam.start()
-    # im = cam.get_next()
     for im in cam.yield_image():
-        # if im is None:
-        #     exit(1)
-        # cam.draw_time(1000)
         cam.draw_text("Hello world", (100, 100), (0, 0, 0, 0))
         cam.draw_box((50, 30, 200, 300), (0, 0, 0, 0))
         cam.update()
