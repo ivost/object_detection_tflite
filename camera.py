@@ -66,17 +66,11 @@ class Camera(object):
 
         # print(f"color {color}")
         # print(f"{object}")
-        self.draw_box(
-            rect=object['bbox'], color=color
-        )
+        self.draw_box(rect=object['bbox'], color=color)
         name = object.get('name')
         xoff = object['bbox'][0] + 5
         yoff = object['bbox'][1] + 5
-
         self.draw_text(f"{prob:.2f} {name}", location=(xoff, yoff), color=color)
-        # if name is not None:
-        #     xoff += 40
-        #     self.draw_text(name, location=(xoff, yoff), color=color)
         return
 
     def draw_box(
@@ -86,7 +80,7 @@ class Camera(object):
     ) -> None:
         outline = color or self._default_color
         line_type = 3
-        # print(f"draw box {rect}")
+        print(f"draw box {rect}")
         x, y = rect[0], rect[1]
         cv2.rectangle(self.image, (x, y), (rect[2], rect[3]), outline, line_type)
         return

@@ -107,7 +107,8 @@ class Detector(object):
 
 
 @click.command()
-@click.option('--media', type=str, default="images/pets.jpg")
+# @click.option('--media', type=str, default="images/pets.jpg")
+@click.option('--media', type=str, default="images/airport1-1.png")
 @click.option('--width', type=int, default=1280)
 @click.option('--height', type=int, default=720)
 @click.option('--hflip/--no-hflip', is_flag=True, default=DEFAULT_HFLIP)
