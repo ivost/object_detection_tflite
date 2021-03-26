@@ -31,12 +31,13 @@ class Camera(object):
             fastforward: int = 1
     ) -> None:
         self._dims = (width, height)
-        self._buffer = Image.new('RGBA', self._dims)
-        self._overlay = None
-        self._draw = ImageDraw.Draw(self._buffer)
+        # self.buffer = Image.new('RGBA', self._dims)
+        self.buffer = None
+        self.overlay = None
+        # self._draw = ImageDraw.Draw(self.buffer)
         self._default_color = (0xff, 0xff, 0xff, 0xff)
         # self._font = ImageFont.truetype("Ubuntu-M.ttf", 40)
-        self._font = ImageFont.truetype(font='TakaoGothic.ttf', size=fontsize)
+        # self._font = ImageFont.truetype(font='TakaoGothic.ttf', size=fontsize)
 
         self._threshold = threshold
         self._fontsize = fontsize
@@ -44,10 +45,11 @@ class Camera(object):
         return
 
     def clear(self: Camera) -> None:
-        self._draw.rectangle(
-            (0, 0) + self._dims,
-            fill=(0, 0, 0, 0x00)
-        )
+        print("clear")
+        # self._draw.rectangle(
+        #     (0, 0) + self._dims,
+        #     fill=(0, 0, 0, 0x00)
+        # )
         return
 
     def draw_objects(self: Camera, objects: List) -> None:
@@ -73,17 +75,12 @@ class Camera(object):
 
     def _draw_object(self: Camera, object: Dict) -> None:
         prob = object['prob']
-
         color = tuple(np.array(np.array(cm.jet((prob - self._threshold) / (1.0 - self._threshold))) * 255, dtype=np.uint8).tolist())
-
         color = (0, 80, 100, 0)
-
         print(f"draw prob {prob}, font {self._font.path}, color {color}")
-
         self._draw_box(
             rect=object['bbox'], color=color
         )
-
         name = object.get('name')
         xoff = object['bbox'][0] + 5
         yoff = object['bbox'][1] + 5
@@ -104,9 +101,9 @@ class Camera(object):
             rect: Tuple[int, int, int, int],
             color: Optional[Tuple[int, int, int, int]]
     ) -> None:
-
         outline = color or self._default_color
-        self._draw.rectangle(rect, fill=None, outline=outline)
+        print("draw box")
+        # self._draw.rectangle(rect, fill=None, outline=outline)
         return
 
     def _draw_text(
@@ -116,30 +113,30 @@ class Camera(object):
             color: Optional[Tuple[int, int, int, int]]
     ) -> None:
         color = color or self._default_color
-        print(text)
-        self._draw.text(location, text, fill=color,
-                        stroke_width=2,  font=self._font)
-
-        # self._buffer.show()
+        print("draw text", text)
+        # self._draw.text(location, text, fill=color,
+        #                 stroke_width=2,  font=self._font)
+        #
+        # self.buffer.show()
         return
 
     def update(self: Camera) -> None:
         print("update")
-        # self._buffer.show()
+        # self.buffer.show()
+        if self.overlay is not None:
+            print("remove_overlay")
+            self.cam.remove_overlay(self.overlay)
 
-        if self._overlay is not None:
-            self._camera.remove_overlay(self._overlay)
-
-        if self._buffer is None:
+        if self.buffer is None:
+            print("no buffer")
             return
-
-        self._overlay = self._camera.add_overlay(
-            self._buffer.tobytes(),
-            format='rgba', layer=3, size=self._dims
-        )
-
-        self._overlay.update(self._buffer.tobytes())
-
+        print("todo update")
+        # self.overlay = self.cam.add_overlay(
+        #     self.buffer.tobytes(),
+        #     format='rgba', layer=3, size=self._dims
+        # )
+        #
+        # self.overlay.update(self.buffer.tobytes())
         return
 
 
@@ -157,29 +154,29 @@ class PiCamera(Camera):
             width=width, height=height,
             threshold=threshold, fontsize=fontsize
         )
-        self._camera = picamera.PiCamera(
+        self.cam = picamera.PiCamera(
             resolution=(width, height),
             framerate=FRAME_PER_SECOND
         )
-        self._camera.hflip = hflip
-        self._camera.vflip = vflip
+        self.cam.hflip = hflip
+        self.cam.vflip = vflip
         return
 
     def start(self: PiCamera) -> None:
-        self._camera.start_preview()
+        self.cam.start_preview()
         return
 
-    def yield_image(self: PiCamera) -> Generator[Image, None]:
-        self._stream = io.BytesIO()
-        for _ in self._camera.capture_continuous(
-                self._stream,
-                format='jpeg',
-                use_video_port=True
-        ):
-            self._stream.seek(0)
-            image = Image.open(self._stream).convert('RGB')
-            yield image
-        return
+    # def yield_image(self: PiCamera) -> Generator[Image, None]:
+    #     self._stream = io.BytesIO()
+    #     for _ in self.cam.capture_continuous(
+    #             self._stream,
+    #             format='jpeg',
+    #             use_video_port=True
+    #     ):
+    #         self._stream.seek(0)
+    #         image = Image.open(self._stream).convert('RGB')
+    #         yield image
+    #     return
 
     def update(self: PiCamera) -> None:
         super().update()
@@ -188,7 +185,7 @@ class PiCamera(Camera):
         return
 
     def stop(self: PiCamera) -> None:
-        self._camera.stop_preview()
+        self.cam.stop_preview()
         return
 
 
@@ -196,25 +193,33 @@ class CvCamera(Camera):
     def __init__(
             self: CvCamera,
             media: Optional[str],
-            width: int,
-            height: int,
-            hflip: bool,
-            vflip: bool,
-            threshold: float,
-            fontsize: int,
-            fastforward: int
+            width: int = 640,
+            height: int = 480,
+            hflip: bool = False,
+            vflip: bool = False,
+            threshold: float = 0.25,
+            fontsize: int = 20,
+            fastforward: int = 0
     ) -> None:
         print(f"==== CvCamera {media}")
+        self.media = media
+        self.window = None
+        self.buffer = None
+        self.is_image = False
         if media is None:
-            self._camera = cv2.VideoCapture(0)
-            self._camera.set(cv2.CAP_PROP_FRAME_HEIGHT, float(height))
-            self._camera.set(cv2.CAP_PROP_FRAME_WIDTH, float(width))
+            self.cam = cv2.VideoCapture(0)
+            self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, float(height))
+            self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, float(width))
             fastforward = 1
         else:
-            self._camera = cv2.VideoCapture(media)
+            self.type = Path(media).suffix
+            self.is_image = self.type in ['.jpg', '.png']
+            self.cam = cv2.VideoCapture(media)
+
         # adjust aspect ratio
-        height = int(self._camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        width = int(self._camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        width = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+        print(f"w {width}, h {height}")
         super().__init__(
             width=width, height=height,
             threshold=threshold, fontsize=fontsize, fastforward=fastforward
@@ -235,38 +240,45 @@ class CvCamera(Camera):
         self.window = 'Object Detection'
         cv2.namedWindow(self.window, cv2.WINDOW_GUI_NORMAL)
         cv2.resizeWindow(self.window, *self._dims)
+        if self.is_image:
+            _, self.buffer = self.cam.read()
         return
 
-    def yield_image(self: CvCamera) -> Generator[Image, None]:
+    def yield_image(self: CvCamera) -> Generator[np.ndarray, None]:
         while True:
-            _, image = self._camera.read()
-            if image is None:
+            _, self.buffer = self.cam.read()
+            if self.buffer is None:
                 time.sleep(1)
                 continue
             if self.flipcode is not None:
-                image = cv2.flip(image, self.flipcode)
-            self.image = image
-            yield Image.fromarray(image.copy()[..., ::-1])
+                frame = cv2.flip(self.buffer, self.flipcode)
+            yield self.buffer
+            # self.image = image
+            # yield Image.fromarray(image.copy()[..., ::-1])
         return
 
     def update(self: CvCamera) -> None:
-        overlay = np.array(self._buffer, dtype=np.uint8)
-        overlay = cv2.cvtColor(overlay, cv2.COLOR_RGBA2BGRA)
-        image = cv2.addWeighted(
-            cv2.cvtColor(self.image, cv2.COLOR_BGR2BGRA), 0.5,
-            overlay, 0.5, 2.2
-        )
-        cv2.imshow(self.window, image)
+        if self.buffer is None:
+            return
+
+        # overlay = np.array(self.buffer, dtype=np.uint8)
+        # overlay = cv2.cvtColor(self.buffer, cv2.COLOR_RGBA2BGRA)
+        # image = cv2.addWeighted(
+        #     cv2.cvtColor(self.image, cv2.COLOR_BGR2BGRA), 0.5,
+        #     overlay, 0.5, 2.2
+        # )
+
+        cv2.imshow(self.window, self.buffer)
         key = cv2.waitKey(1000 // FRAME_PER_SECOND)
         if key == 99:
             raise KeyboardInterrupt
         return
 
     def stop(self: CvCamera) -> None:
+        cv2.waitKey(2000)
         cv2.destroyAllWindows()
-        self._camera.release()
+        self.cam.release()
         return
-
 
 # class PlCamera(Camera):
 #     def __init__(
@@ -295,7 +307,7 @@ class CvCamera(Camera):
 #         return Image.fromarray(self.image.copy()[..., ::-1])
 #
 #     def update(self: PlCamera) -> None:
-#         overlay = np.array(self._buffer, dtype=np.uint8)
+#         overlay = np.array(self.buffer, dtype=np.uint8)
 #         overlay = cv2.cvtColor(overlay, cv2.COLOR_RGBA2BGRA)
 #         image = cv2.addWeighted(
 #             cv2.cvtColor(self.image, cv2.COLOR_BGR2BGRA), 0.5,
@@ -314,40 +326,20 @@ class CvCamera(Camera):
 
 def get_camera(
         media: Optional[str],
-        width: int,
         height: int,
+        width: int,
         hflip: bool,
         vflip: bool,
         threshold: float,
         fontsize: int,
         fastforward: int
 ) -> Camera:
-
-    assert media is not None
-
-    if not os.path.exists(media):
-        raise ValueError(f'{media} not found')
-
-    # if Path(media).suffix in ['.jpg', '.png']:
-    #     return PlCamera(
-    #         media=media, threshold=threshold, fontsize=fontsize
-    #     )
-
-    return CvCamera(
-        media=media,
-        width=width, height=height,
-        hflip=hflip, vflip=vflip,
-        threshold=threshold, fontsize=fontsize,
-        fastforward=fastforward
-    )
-
     if platform.system() == 'RPi':  # RaspberryPi
         return PiCamera(
             width=width, height=height,
             hflip=hflip, vflip=vflip,
             threshold=threshold, fontsize=fontsize
         )
-
     return CvCamera(
         media=media,
         width=width, height=height,
@@ -355,8 +347,7 @@ def get_camera(
         threshold=threshold, fontsize=fontsize
     )
 
-
-# def draw_test():
+# def image_draw_test():
 #     im = Image.open("images/parrot.jpg")
 #     # im = im.convert("RGBA")
 #     print(f"format: {im.format}, size: {im.size}, mode: {im.mode}")
@@ -389,14 +380,32 @@ def get_camera(
 #
 #     return
 
+def capture_test(media):
+    cap = cv2.VideoCapture(media)
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print(f"h {h}, w {w}")
+
+    ok, frame = cap.read()
+    if not ok:
+        print("ERROR")
+        return
+    h, w, c = frame.shape
+    print(f"h {h}, w {w}")
+
+    cv2.imshow("Frame", frame)
+    key = cv2.waitKey(10000) & 0xFF
+    cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
+    media = "images/pets.jpg"
+#    capture_test(media)
 #    draw_test()
 
-    # # test
-    # print("camera self test")
-    # cam = PlCamera("images/parrot.jpg", threshold=0.25, fontsize=16)
-    # cam.start()
-    # cam.clear()
-    # cam.draw_time(1000)
-    # cam.stop()
+    print("camera self test")
+    cam = CvCamera(media, threshold=0.25, fontsize=16)
+    cam.start()
+    cam.draw_time(1000)
+    cam.update()
+    cam.stop()

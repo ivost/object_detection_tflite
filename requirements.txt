@@ -1,8 +1,8 @@
 opencv-contrib-python
 tensorflow
 tensorflow-addons
-torch
-torchvision
+#torch
+#torchvision
 pandas
 seaborn
 Pillow

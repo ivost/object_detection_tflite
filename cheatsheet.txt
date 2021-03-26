@@ -1,2 +1,8 @@
 
+use py3.7
+
+pyenv virtualenv 3.7.9 venv37
+
+pyenv local venv37
+
 ln -s ~/github/coral-playground/images/ images
