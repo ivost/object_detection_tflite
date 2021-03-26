@@ -62,7 +62,7 @@ class Detector(object):
             fontsize=fontsize,
             fastforward=self.fastforward
         )
-        width, height = self.camera._dims
+        width, height = self.camera.dims
         self.decoder = get_decoder(
             model_path=model_path,
             target=target,
@@ -73,15 +73,21 @@ class Detector(object):
         return
 
     def run(self: Detector) -> None:
-        self.camera.start()
         try:
+            self.camera.start()
             framecount = 0
             for image in self.camera.yield_image():
+                # image = self.camera.get_next()
+                # if image is None:
+                #     break
                 framecount += 1
                 if framecount >= self.fastforward:
                     start_time = time.perf_counter()
+
                     objects = self.decoder.detect_objects(image)
+
                     objects = self.decoder.get_bboxes(objects)
+
                     end_time = time.perf_counter()
                     elapsed_ms = (end_time - start_time) * 1000
 
@@ -95,12 +101,13 @@ class Detector(object):
         except KeyboardInterrupt:
             pass
         finally:
+            self.camera.wait(10000)
             self.camera.stop()
         return
 
 
 @click.command()
-@click.option('--media', type=str, default="images/parrot.jpg")
+@click.option('--media', type=str, default="images/pets.jpg")
 @click.option('--width', type=int, default=1280)
 @click.option('--height', type=int, default=720)
 @click.option('--hflip/--no-hflip', is_flag=True, default=DEFAULT_HFLIP)

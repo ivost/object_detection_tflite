@@ -5,7 +5,9 @@ from typing import List, Optional
 import os
 import re
 import numpy as np
+
 from PIL import Image
+
 import tflite_runtime.interpreter as tflite
 import platform
 if platform.system() == 'Linux':  # RaspberryPi
