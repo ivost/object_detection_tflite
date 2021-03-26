@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 from __future__ import annotations
-from typing import Tuple, Optional
+
 import os
-import time
-import click
 import platform
-if platform.system() == 'Linux':  # RaspberryPi
-    DEFAULT_HFLIP = True
-    DEFAULT_VFLIP = True
-elif platform.system() == 'Darwin':  # MacOS X
-    DEFAULT_HFLIP = False
-    DEFAULT_VFLIP = False
-else:
-    raise NotImplementedError()
+import time
+from typing import Tuple, Optional
+
+import click
+
+DEFAULT_HFLIP = False
+DEFAULT_VFLIP = False
+
+# if platform.system() == 'Linux':  # RaspberryPi
+#     DEFAULT_HFLIP = True
+#     DEFAULT_VFLIP = True
+# elif platform.system() == 'Darwin':  # MacOS X
+#     DEFAULT_HFLIP = False
+#     DEFAULT_VFLIP = False
+# else:
+#     raise NotImplementedError()
+
 from camera import get_camera
 from decode import get_decoder
 
@@ -29,17 +36,17 @@ def _round_buffer_dims(dims: Tuple[int, int]) -> Tuple[int, int]:
 
 class Detector(object):
     def __init__(
-        self: Detector,
-        media: Optional[str],
-        width: int,
-        height: int,
-        hflip: bool,
-        vflip: bool,
-        model_path: str,
-        target: str,
-        threshold: float,
-        fontsize: int,
-        fastforward: int
+            self: Detector,
+            media: Optional[str],
+            width: int,
+            height: int,
+            hflip: bool,
+            vflip: bool,
+            model_path: str,
+            target: str,
+            threshold: float,
+            fontsize: int,
+            fastforward: int
     ) -> None:
         if fastforward > 1:
             self.fastforward = fastforward
@@ -77,11 +84,13 @@ class Detector(object):
                     objects = self.decoder.get_bboxes(objects)
                     end_time = time.perf_counter()
                     elapsed_ms = (end_time - start_time) * 1000
-                    self.camera.clear()
+
+                    # self.camera.clear()
                     self.camera.draw_objects(objects)
                     self.camera.draw_time(elapsed_ms)
                     self.camera.draw_count(len(objects))
                     self.camera.update()
+
                     framecount = 0
         except KeyboardInterrupt:
             pass
@@ -91,7 +100,7 @@ class Detector(object):
 
 
 @click.command()
-@click.option('--media', type=str, default=None)
+@click.option('--media', type=str, default="images/parrot.jpg")
 @click.option('--width', type=int, default=1280)
 @click.option('--height', type=int, default=720)
 @click.option('--hflip/--no-hflip', is_flag=True, default=DEFAULT_HFLIP)
@@ -103,18 +112,21 @@ class Detector(object):
 @click.option('--fontsize', type=int, default=20)
 @click.option('--fastforward', type=int, default=1)
 def main(
-    media: Optional[str],
-    width: int,
-    height: int,
-    hflip: bool,
-    vflip: bool,
-    model: str,
-    quant: str,
-    target: str,
-    threshold: float,
-    fontsize: int,
-    fastforward: int
+        media: Optional[str],
+        width: int,
+        height: int,
+        hflip: bool,
+        vflip: bool,
+        model: str,
+        quant: str,
+        target: str,
+        threshold: float,
+        fontsize: int,
+        fastforward: int
 ) -> None:
+
+    print(f"media {media}, font {fontsize}")
+
     if model in [f'yolov5{x}' for x in ['s', 'm', 'l', 'x']]:
         model_base = f'yolov5/{model}'
         if quant in ['fp16', 'int8']:
@@ -149,8 +161,11 @@ def main(
         else:
             model_quant = ''
         model_path = f'{model_base}{model_quant}.tflite'
-    assert(os.path.exists(model_path))
+
+    assert (os.path.exists(model_path))
+
     width, height = _round_buffer_dims((width, height))
+
     detector = Detector(
         media=media,
         width=width,
@@ -163,7 +178,9 @@ def main(
         fontsize=fontsize,
         fastforward=fastforward
     )
+
     detector.run()
+
     return
 
 
