@@ -2,17 +2,14 @@
 # -*- coding:utf-8 -*-
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import List, Dict, Tuple, Generator, Optional
-
-import cv2
 import matplotlib.cm as cm
+import cv2
 import numpy as np
-# from PIL import Image, ImageDraw, ImageFont, ImageColor
+from PIL import Image
 
 FRAME_PER_SECOND = 30
-FONT = "Roboto-Black.ttf"
 
 
 class Camera(object):
@@ -25,7 +22,7 @@ class Camera(object):
             fastforward: int = 1
     ) -> None:
         self._dims = (width, height)
-        self._default_color = (0xff, 0xff, 0xff, 0xff)
+        self._default_color = (0xff, 0xff, 0xff)
         self._threshold = threshold
         self._fontsize = fontsize
         self._fastforward = fastforward
@@ -62,58 +59,56 @@ class Camera(object):
 
     def draw_object(self: Camera, object: Dict) -> None:
         prob = object['prob']
-        # color = tuple(np.array(np.array(cm.jet((prob - self._threshold) / (1.0 - self._threshold))) * 255,
-        #                        dtype=np.uint8).tolist())
-        color = (0, 80, 100, 0)
-        print(f"draw prob {prob}, font {self._font.path}, color {color}")
-        self.draw_box(
-            rect=object['bbox'], color=color
-        )
+        x = (prob - self._threshold) / (1.0 - self._threshold)
+        # print(f"prob {prob}, x {x}, cm {cm.jet(x)}")
+        color = tuple(np.array(np.array(cm.jet(x)) * 255, dtype=np.uint8).tolist())
+        color = color[:-1]
+
+        # print(f"color {color}")
+        # print(f"{object}")
+        self.draw_box(rect=object['bbox'], color=color)
         name = object.get('name')
         xoff = object['bbox'][0] + 5
         yoff = object['bbox'][1] + 5
-
-        if name is not None:
-            print(xoff, yoff, name)
-            self.draw_text(name, location=(xoff, yoff), color=color)
-            yoff += self._fontsize
-        self.draw_text(f"{prob:%.3f'}", location=(xoff, yoff), color=color
-                       )
+        self.draw_text(f"{prob:.2f} {name}", location=(xoff, yoff), color=color)
         return
 
     def draw_box(
             self: Camera,
-            box: Tuple[int, int, int, int],
+            rect: Tuple[int, int, int, int],
             color: Optional[Tuple[int, int, int, int]]
     ) -> None:
         outline = color or self._default_color
-        line_type = 2
-        print("draw box", color)
-
-        x, y = box[0], box[1]
-        cv2.rectangle(self.image, (x, y), (box[2], box[3]), outline, line_type)
+        line_type = 3
+        print(f"draw box {rect}")
+        x, y = rect[0], rect[1]
+        cv2.rectangle(self.image, (x, y), (rect[2], rect[3]), outline, line_type)
         return
 
     def draw_text(
             self: Camera,
             text: str,
             location: Tuple[int, int],
-            color: Optional[Tuple[int, int, int, int]]
+            color: Optional[Tuple[int, int, int]]
     ) -> None:
         if self.image is None:
             return
-        color = color or self._default_color
-        print("draw text", text, "color", color)
+        font_color = color or self._default_color
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
-        font_color = color
+        font_scale = 0.7
         line_type = 2
         x, y = location
         x1 = x + 10 if x < 10 else x - 10
         y1 = y + 20 if y < 20 else y - 20
-
         cv2.putText(self.image, text, (x1, y1), font, font_scale, font_color, line_type)
         return
+
+    def wait(self, milliseconds: int):
+        wait(milliseconds)
+
+    @property
+    def dims(self):
+        return self._dims
 
 
 class CvCamera(Camera):
@@ -125,10 +120,10 @@ class CvCamera(Camera):
             hflip: bool = False,
             vflip: bool = False,
             threshold: float = 0.25,
-            fontsize: int = 20,
+            fontsize: int = 10,
             fastforward: int = 0
     ) -> None:
-        print(f"==== CvCamera {media}")
+        print(f"CvCamera {media}")
         self.media = media
         self.window = None
         # self.buffer = None
@@ -168,34 +163,32 @@ class CvCamera(Camera):
         self.window = 'Object Detection'
         cv2.namedWindow(self.window, cv2.WINDOW_GUI_NORMAL)
         cv2.resizeWindow(self.window, *self._dims)
-        if self.is_image:
-            _, self.image = self.cam.read()
+        # if self.is_image:
+        #     _, self.image = self.cam.read()
         return
 
-    # def yield_image(self: CvCamera) -> Generator[np.ndarray, None]:
-    #     while True:
-    #         _, image = self._camera.read()
-    #         if image is None:
-    #             time.sleep(1)
-    #             continue
-    #         if self.flipcode is not None:
-    #             image = cv2.flip(image, self.flipcode)
-    #         self.image = image
-    #         # yield Image.fromarray(image.copy()[..., ::-1])
-    #         yield self.image
-    #     return
+    def yield_image(self: CvCamera) -> Generator[Image, None]:
+        try:
+            while True:
+                _, image = self.cam.read()
+                if image is None:
+                    print("eof")
+                    return None
 
-    def wait(self: CvCamera, milliseconds: int):
-        key = cv2.waitKey(milliseconds)
-        if key == 99:
-            raise KeyboardInterrupt
+                if self.flipcode is not None:
+                    image = cv2.flip(image, self.flipcode)
+                self.image = image
+                yield Image.fromarray(image.copy()[..., ::-1])
+        except GeneratorExit:
+            print("GeneratorExit")
+        return None
 
     def update(self: CvCamera) -> None:
-        print("update")
         if self.image is None:
             return
+        print("update")
         cv2.imshow(self.window, self.image)
-        self.wait(1000 // FRAME_PER_SECOND)
+        wait(1000 // FRAME_PER_SECOND)
         return
 
     def stop(self: CvCamera) -> None:
@@ -222,19 +215,23 @@ def get_camera(
     )
 
 
+def wait(milliseconds: int):
+    key = cv2.waitKey(milliseconds)
+    if key == 99:
+        raise KeyboardInterrupt
+
+
 if __name__ == "__main__":
     media = "images/pets.jpg"
     text = "Hello World"
     print("camera self test")
     cam = CvCamera(media, threshold=0.25, fontsize=10)
     cam.start()
-    cam.draw_time(1000)
-    cam.draw_text("Hello world", (100, 100), (0, 0, 0, 0))
-    cam.draw_box((50, 30, 200, 300), (0, 0, 0, 0))
-    cam.update()
-    cam.wait(5000)
-    cam.draw_text("Goodbye", (100, 100), (0, 0, 0, 0))
-    cam.draw_box((30, 50, 300, 200), (0, 0, 0, 0))
-    cam.update()
-    cam.wait(5000)
+    for im in cam.yield_image():
+        cam.draw_text("Hello world", (100, 100), (0, 0, 0, 0))
+        cam.draw_box((50, 30, 200, 300), (0, 0, 0, 0))
+        cam.update()
+        wait(1000)
+
+    wait(10000)
     cam.stop()
