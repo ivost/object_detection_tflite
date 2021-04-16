@@ -6,3 +6,5 @@ pyenv virtualenv 3.7.9 venv37
 pyenv local venv37
 
 ln -s ~/github/coral-playground/images/ images
+
+pip install --extra-index-url https://google-coral.github.io/py-repo/ tflite_runtime
